@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MicStream — Real-Time Audio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #0a0c14;
+      --bg2: #0f1120;
+      --surface: rgba(255, 255, 255, 0.04);
+      --surface-hover: rgba(255, 255, 255, 0.08);
+      --border: rgba(255, 255, 255, 0.08);
+      --border-hover: rgba(255, 255, 255, 0.18);
+      --text: #e8ecf4;
+      --muted: #7a85a3;
+      --accent-mic: #6c63ff;
+      --accent-mic-glow: rgba(108, 99, 255, 0.35);
+      --accent-spk: #0fa37f;
+      --accent-spk-glow: rgba(15, 163, 127, 0.35);
+      --red: #ff4d6d;
+      --yellow: #ffd166;
+      --green: #06d6a0;
+      --radius: 20px;
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* ── Animated background ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 20% 20%, rgba(108, 99, 255, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 40% at 80% 75%, rgba(15, 163, 127, 0.10) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px 60px;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 44px;
+    }
+
+    header .logo {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    header h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800;
+      background: linear-gradient(135deg, #c6c0ff 0%, #6c63ff 50%, #05d9a4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.15;
+    }
+
+    header p {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 400;
+    }
+
+    /* ── Status pill ── */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 8px 18px;
+      margin-bottom: 44px;
+      font-size: 13px;
+      font-weight: 500;
+      transition: border-color 0.3s;
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--red);
+      transition: background 0.4s;
+      flex-shrink: 0;
+    }
+
+    .status-dot.connecting {
+      background: var(--yellow);
+      animation: pulse-dot 1s infinite;
+    }
+
+    .status-dot.connected {
+      background: var(--green);
+      animation: pulse-dot 2.5s infinite;
+    }
+
+    @keyframes pulse-dot {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.5;
+        transform: scale(0.7);
+      }
+    }
+
+    #status-text {
+      transition: color 0.3s;
+    }
+
+    /* ── Mode cards ── */
+    .mode-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+      width: 100%;
+      max-width: 620px;
+      margin-bottom: 36px;
+    }
+
+    .mode-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px 28px;
+      cursor: pointer;
+      transition: border-color 0.25s, background 0.25s, transform 0.2s, box-shadow 0.25s;
+      text-align: center;
+      user-select: none;
+    }
+
+    .mode-card:hover {
+      background: var(--surface-hover);
+      border-color: var(--border-hover);
+      transform: translateY(-3px);
+    }
+
+    .mode-card.active-mic {
+      border-color: var(--accent-mic);
+      background: rgba(108, 99, 255, 0.08);
+      box-shadow: 0 0 36px var(--accent-mic-glow);
+    }
+
+    .mode-card.active-spk {
+      border-color: var(--accent-spk);
+      background: rgba(15, 163, 127, 0.08);
+      box-shadow: 0 0 36px var(--accent-spk-glow);
+    }
+
+    .mode-icon {
+      font-size: 52px;
+      margin-bottom: 16px;
+      display: block;
+      transition: transform 0.3s;
+    }
+
+    .mode-card:hover .mode-icon {
+      transform: scale(1.12);
+    }
+
+    .mode-card.active-mic .mode-icon,
+    .mode-card.active-spk .mode-icon {
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-6px);
+      }
+    }
+
+    .mode-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .mode-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .mode-badge {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .active-mic .mode-badge {
+      background: rgba(108, 99, 255, 0.2);
+      color: #a89dff;
+      opacity: 1;
+    }
+
+    .active-spk .mode-badge {
+      background: rgba(15, 163, 127, 0.2);
+      color: #3dffd1;
+      opacity: 1;
+    }
+
+    /* ── Controls panel ── */
+    .controls {
+      width: 100%;
+      max-width: 620px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      display: none;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .controls.visible {
+      display: flex;
+    }
+
+    .controls-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .controls-title {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .mode-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    /* Stream button */
+    .stream-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 14px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.25s;
+      letter-spacing: 0.03em;
+    }
+
+    .stream-btn.start-mic {
+      background: linear-gradient(135deg, #6c63ff, #9d96ff);
+      color: #fff;
+      box-shadow: 0 6px 28px rgba(108, 99, 255, 0.4);
+    }
+
+    .stream-btn.start-spk {
+      background: linear-gradient(135deg, #0fa37f, #3dffd1);
+      color: #003a2e;
+      box-shadow: 0 6px 28px rgba(15, 163, 127, 0.4);
+    }
+
+    .stream-btn.stop-btn {
+      background: rgba(255, 77, 109, 0.12);
+      border: 1.5px solid var(--red);
+      color: var(--red);
+      box-shadow: none;
+    }
+
+    .stream-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .stream-btn:not(:disabled):hover {
+      transform: translateY(-2px);
+      filter: brightness(1.1);
+    }
+
+    .stream-btn:not(:disabled):active {
+      transform: translateY(0);
+      filter: brightness(0.95);
+    }
+
+    /* Visualizer */
+    .visualizer-wrap {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .visualizer-wrap.visible {
+      display: flex;
+    }
+
+    .visualizer-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    canvas#visualizer {
+      width: 100%;
+      height: 60px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    /* Info box */
+    .info-box {
+      background: rgba(108, 99, 255, 0.06);
+      border: 1px solid rgba(108, 99, 255, 0.18);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .info-box strong {
+      color: var(--text);
+    }
+
+    /* Messages */
+    #message {
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 16px;
+      min-height: 20px;
+      transition: color 0.3s;
+    }
+
+    #message.error {
+      color: var(--red);
+    }
+
+    /* footer */
+    footer {
+      margin-top: auto;
+      padding-top: 48px;
+      text-align: center;
+      font-size: 12px;
+      color: rgba(122, 133, 163, 0.5);
+    }
+
+    /* ── Streaming animation on stream button ── */
+    .pulse-ring {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: ring-pulse 1.1s ease-out infinite;
+    }
+
+    @keyframes ring-pulse {
+      0% {
+        transform: scale(1);
+        opacity: 1;
+      }
+
+      80% {
+        transform: scale(2);
+        opacity: 0;
+      }
+
+      100% {
+        transform: scale(2);
+        opacity: 0;
+      }
+    }
+
+    @media (max-width: 500px) {
+      .mode-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        padding: 22px 18px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <div class="logo">🎙 MicStream</div>
+      <h1>Real-Time Audio Bridge</h1>
+      <p>Stream audio between devices over your local network</p>
+    </header>
+
+    <!-- Status pill -->
+    <div class="status-bar" id="status-bar">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-text">Disconnected</span>
+    </div>
+
+    <!-- Mode selection cards -->
+    <div class="mode-grid" id="mode-grid">
+      <div class="mode-card" id="card-mic" onclick="selectMode('mic')">
+        <span class="mode-icon">🎙</span>
+        <div class="mode-title">Use as Microphone</div>
+        <div class="mode-desc">Capture audio from this device and stream it to the connected speaker.</div>
+        <span class="mode-badge">Sender</span>
+      </div>
+      <div class="mode-card" id="card-spk" onclick="selectMode('spk')">
+        <span class="mode-icon">🔊</span>
+        <div class="mode-title">Use as Speaker</div>
+        <div class="mode-desc">Receive the audio stream from the connected microphone and play it here.</div>
+        <span class="mode-badge">Receiver</span>
+      </div>
+    </div>
+
+    <!-- Controls panel -->
+    <div class="controls" id="controls">
+      <div class="controls-header">
+        <span class="controls-title" id="controls-title">Controls</span>
+        <span class="mode-label" id="mode-label"></span>
+      </div>
+
+      <div class="visualizer-wrap" id="visualizer-wrap">
+        <div class="visualizer-label">Audio Level</div>
+        <canvas id="visualizer" width="600" height="60"></canvas>
+      </div>
+
+      <button class="stream-btn" id="stream-btn" onclick="toggleStream()" disabled>
+        Waiting for peer…
+      </button>
+
+      <div class="info-box" id="info-box">
+        <strong>How to connect:</strong> Open this page on both devices on the same Wi-Fi network.
+        Select a different mode on each device. The stream starts automatically once connected.
+      </div>
+    </div>
+
+    <div id="message"></div>
+
+    <!-- Hidden audio element for speaker mode -->
+    <audio id="remote-audio" autoplay playsinline></audio>
+
+    <footer>MicStream · WebRTC · Works in-browser, no app needed</footer>
+  </div>
+
+  <script>
+    // ─── State ───────────────────────────────────────────────────────────────
+    let mode = null;           // 'mic' | 'spk'
+    let streaming = false;
+    let ws = null;
+    let pc = null;             // RTCPeerConnection
+    let localStream = null;
+    let peerConnected = false; // true when the other device is in the room
+    let audioCtx = null;
+    let analyser = null;
+    let vizRaf = null;
+
+    // ─── WebSocket connection ─────────────────────────────────────────────────
+    // Use wss:// when served over HTTPS (e.g. dev tunnels, ngrok) to avoid mixed-content blocks
+    const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProto}//${location.host}`;
+
+    function connectWS() {
+      setStatus('connecting');
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        setMessage('Waiting for second device to connect…');
+      };
+
+      ws.onmessage = async (evt) => {
+        const msg = JSON.parse(evt.data);
+
+        if (msg.type === 'error') {
+          setMessage('⚠️ ' + msg.message, true);
+          return;
+        }
+
+        if (msg.type === 'peer-count') {
+          peerConnected = msg.count === 2;
+          if (peerConnected) {
+            setStatus('connected');
+            setMessage('Peer connected! Select a mode above.');
+            updateStreamBtn();
+            // If mic mode already selected, auto-initiate
+            if (mode === 'mic' && !streaming) autoStartOffer();
+          } else {
+            setStatus('connecting');
+            setMessage('Waiting for second device to connect…');
+            updateStreamBtn();
+          }
+          return;
+        }
+
+        if (msg.type === 'offer' && mode === 'spk') {
+          await handleOffer(msg);
+        }
+        if (msg.type === 'answer' && mode === 'mic') {
+          await pc.setRemoteDescription(new RTCSessionDescription(msg));
+        }
+        if (msg.type === 'ice-candidate') {
+          try { await pc?.addIceCandidate(new RTCIceCandidate(msg.candidate)); } catch (_) { }
+        }
+      };
+
+      ws.onclose = () => {
+        peerConnected = false;
+        setStatus('disconnected');
+        updateStreamBtn();
+        setMessage('Connection lost. Reconnecting…', true);
+        cleanupPeer();
+        setTimeout(connectWS, 2500);
+      };
+
+      ws.onerror = () => ws.close();
+    }
+
+    function sendWS(obj) {
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+    }
+
+    // ─── Mode selection ───────────────────────────────────────────────────────
+    function selectMode(m) {
+      if (mode === m) return;
+      mode = m;
+
+      document.getElementById('card-mic').classList.toggle('active-mic', m === 'mic');
+      document.getElementById('card-spk').classList.toggle('active-spk', m === 'spk');
+
+      const controls = document.getElementById('controls');
+      controls.classList.add('visible');
+      document.getElementById('controls-title').textContent = m === 'mic' ? 'Microphone Controls' : 'Speaker Controls';
+      document.getElementById('mode-label').textContent = m === 'mic' ? 'SENDER MODE' : 'RECEIVER MODE';
+
+      if (m === 'mic' && peerConnected && !streaming) autoStartOffer();
+      if (m === 'spk') setMessage('Waiting for microphone device to start streaming…');
+
+      updateStreamBtn();
+    }
+
+    // ─── Stream toggle ────────────────────────────────────────────────────────
+    async function toggleStream() {
+      if (!streaming) {
+        await startStream();
+      } else {
+        stopStream();
+      }
+    }
+
+    async function startStream() {
+      if (mode === 'mic') {
+        await autoStartOffer();
+      }
+      // Speaker side: stream auto-starts when offer arrives
+    }
+
+    function stopStream() {
+      streaming = false;
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+      }
+      cleanupPeer();
+      stopVisualizer();
+      updateStreamBtn();
+      setMessage('Stream stopped.');
+      // Re-invite if peer still connected
+      if (peerConnected && mode === 'mic') {
+        setTimeout(() => {
+          updateStreamBtn();
+        }, 500);
+      }
+    }
+
+    // ─── WebRTC: Microphone side (offer) ─────────────────────────────────────
+    async function autoStartOffer() {
+      if (!peerConnected || mode !== 'mic') return;
+      if (streaming) return;
+
+      try {
+        setMessage('Requesting microphone access…');
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      } catch (e) {
+        setMessage('⚠️ Microphone access denied: ' + e.message, true);
+        return;
+      }
+
+      pc = createPC();
+      localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      sendWS({ type: 'offer', sdp: offer.sdp });
+
+      streaming = true;
+      updateStreamBtn();
+      startVisualizer(localStream);
+      setMessage('Streaming audio… 🎙');
+    }
+
+    // ─── WebRTC: Speaker side (answer) ───────────────────────────────────────
+    async function handleOffer(msg) {
+      pc = createPC();
+      await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: msg.sdp }));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      sendWS({ type: 'answer', sdp: answer.sdp });
+
+      streaming = true;
+      updateStreamBtn();
+      setMessage('Receiving audio… 🔊');
+    }
+
+    // ─── RTCPeerConnection factory ────────────────────────────────────────────
+    function createPC() {
+      const p = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      });
+
+      p.onicecandidate = (e) => {
+        if (e.candidate) sendWS({ type: 'ice-candidate', candidate: e.candidate });
+      };
+
+      p.ontrack = (e) => {
+        // Speaker receives audio
+        const audio = document.getElementById('remote-audio');
+        if (audio.srcObject !== e.streams[0]) {
+          audio.srcObject = e.streams[0];
+          startRemoteVisualizer(e.streams[0]);
+        }
+      };
+
+      p.onconnectionstatechange = () => {
+        if (p.connectionState === 'failed' || p.connectionState === 'disconnected') {
+          stopStream();
+          setMessage('Peer connection dropped.', true);
+        }
+      };
+
+      return p;
+    }
+
+    function cleanupPeer() {
+      if (pc) { try { pc.close(); } catch (_) { } pc = null; }
+    }
+
+    // ─── Audio Visualizer ────────────────────────────────────────────────────
+    function startVisualizer(stream) {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      const src = audioCtx.createMediaStreamSource(stream);
+      src.connect(analyser);
+      document.getElementById('visualizer-wrap').classList.add('visible');
+      drawVisualizer();
+    }
+
+    function startRemoteVisualizer(stream) {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      const src = audioCtx.createMediaStreamSource(stream);
+      src.connect(analyser);
+      document.getElementById('visualizer-wrap').classList.add('visible');
+      drawVisualizer();
+    }
+
+    function drawVisualizer() {
+      const canvas = document.getElementById('visualizer');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      const dataArr = new Uint8Array(analyser.frequencyBinCount);
+      const accent = mode === 'mic' ? '#6c63ff' : '#0fa37f';
+
+      function draw() {
+        vizRaf = requestAnimationFrame(draw);
+        analyser.getByteFrequencyData(dataArr);
+        ctx.clearRect(0, 0, W, H);
+
+        const barW = (W / dataArr.length) * 2.2;
+        let x = 0;
+        for (let i = 0; i < dataArr.length; i++) {
+          const barH = (dataArr[i] / 255) * H;
+          const alpha = 0.4 + (dataArr[i] / 255) * 0.6;
+          ctx.fillStyle = accent + Math.round(alpha * 255).toString(16).padStart(2, '0');
+          ctx.beginPath();
+          ctx.roundRect(x, H - barH, barW - 1, barH, [3, 3, 0, 0]);
+          ctx.fill();
+          x += barW + 1;
+        }
+      }
+      draw();
+    }
+
+    function stopVisualizer() {
+      if (vizRaf) { cancelAnimationFrame(vizRaf); vizRaf = null; }
+      document.getElementById('visualizer-wrap').classList.remove('visible');
+      const canvas = document.getElementById('visualizer');
+      canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // ─── UI helpers ──────────────────────────────────────────────────────────
+    function setStatus(state) {
+      const dot = document.getElementById('status-dot');
+      const txt = document.getElementById('status-text');
+      dot.className = 'status-dot ' + (state === 'connected' ? 'connected' : state === 'connecting' ? 'connecting' : '');
+      const labels = { connected: '🟢 Connected', connecting: '🟡 Connecting…', disconnected: '🔴 Disconnected' };
+      txt.textContent = labels[state] || state;
+    }
+
+    function setMessage(text, isError = false) {
+      const el = document.getElementById('message');
+      el.textContent = text;
+      el.className = isError ? 'error' : '';
+    }
+
+    function updateStreamBtn() {
+      const btn = document.getElementById('stream-btn');
+      if (!mode) { btn.disabled = true; btn.innerHTML = 'Select a mode above'; btn.className = 'stream-btn'; return; }
+      if (!peerConnected) { btn.disabled = true; btn.innerHTML = 'Waiting for peer…'; btn.className = 'stream-btn'; return; }
+
+      if (streaming) {
+        btn.disabled = false;
+        btn.className = 'stream-btn stop-btn';
+        btn.innerHTML = `<span class="pulse-ring"></span> Stop Streaming`;
+      } else {
+        btn.disabled = false;
+        btn.className = `stream-btn ${mode === 'mic' ? 'start-mic' : 'start-spk'}`;
+        btn.innerHTML = mode === 'mic' ? '🎙 Start Streaming' : '🔊 Ready to Receive';
+        if (mode === 'spk') btn.disabled = true; // speaker is passive
+      }
+    }
+
+    // ─── Boot ─────────────────────────────────────────────────────────────────
+    connectWS();
+  </script>
+</body>
+
+</html>
