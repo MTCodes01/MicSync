@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
     rel="stylesheet" />
+  <script src="/qrcode.min.js"></script>
   <style>
     *,
     *::before,
@@ -150,6 +151,65 @@
 
     #status-text {
       transition: color 0.3s;
+    }
+
+    /* ── Pair card ── */
+    .pair-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px dashed var(--border-hover);
+      border-radius: var(--radius);
+      padding: 16px 22px;
+      margin-bottom: 34px;
+      transition: all 0.3s;
+    }
+
+    .pair-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .copy-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.2s;
+    }
+
+    .copy-btn:hover {
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    #qrcode {
+      padding: 8px;
+      background: #fff;
+      border-radius: 12px;
+      display: inline-block;
+    }
+
+    #qrcode img,
+    #qrcode canvas {
+      display: block;
+    }
+
+    .pair-hint {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .pair-card.connected #qrcode,
+    .pair-card.connected .pair-hint {
+      display: none;
     }
 
     /* ── Mode cards ── */
@@ -457,6 +517,16 @@
       <span id="status-text">Disconnected</span>
     </div>
 
+    <!-- Room & QR Pairing -->
+    <div class="pair-card" id="pair-card">
+      <div class="pair-header">
+        <span>Room: <strong id="room-id-display">…</strong></span>
+        <button class="copy-btn" id="copy-btn" onclick="copyLink()">📋 Copy Link</button>
+      </div>
+      <div id="qrcode"></div>
+      <span class="pair-hint">Scan with your phone to join this room</span>
+    </div>
+
     <!-- Mode selection cards -->
     <div class="mode-grid" id="mode-grid">
       <div class="mode-card" id="card-mic" onclick="selectMode('mic')">
@@ -515,10 +585,43 @@
     let analyser = null;
     let vizRaf = null;
 
+    // ─── Room & Pairing Setup ────────────────────────────────────────────────
+    const urlParams = new URLSearchParams(window.location.search);
+    let roomId = (urlParams.get('room') || Math.random().toString(36).substring(2, 6)).toUpperCase();
+    if (urlParams.get('room') !== roomId) {
+      urlParams.set('room', roomId);
+      history.replaceState({}, '', `${location.pathname}?${urlParams}`);
+    }
+
+    let pairUrl = location.href;
+    function initPairing() {
+      document.getElementById('room-id-display').textContent = roomId;
+      fetch('/api/info').then(r => r.json()).then(info => {
+        if (info.localIp && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+          pairUrl = `${location.protocol}//${info.localIp}:${info.port}/?room=${roomId}`;
+        }
+        renderQR(pairUrl);
+      }).catch(() => renderQR(pairUrl));
+    }
+
+    function renderQR(url) {
+      const el = document.getElementById('qrcode');
+      el.innerHTML = '';
+      if (window.QRCode) {
+        new QRCode(el, { text: url, width: 120, height: 120 });
+      } else {
+        el.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(url)}" width="120" height="120" alt="QR Code">`;
+      }
+    }
+
+    function copyLink() {
+      navigator.clipboard.writeText(pairUrl).then(() => setMessage('Room link copied! 📋'));
+    }
+
     // ─── WebSocket connection ─────────────────────────────────────────────────
     // Use wss:// when served over HTTPS (e.g. dev tunnels, ngrok) to avoid mixed-content blocks
     const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProto}//${location.host}`;
+    const wsUrl = `${wsProto}//${location.host}?room=${roomId}`;
 
     function connectWS() {
       setStatus('connecting');
@@ -538,6 +641,7 @@
 
         if (msg.type === 'peer-count') {
           peerConnected = msg.count === 2;
+          document.getElementById('pair-card').classList.toggle('connected', peerConnected);
           if (peerConnected) {
             setStatus('connected');
             setMessage('Peer connected! Select a mode above.');
@@ -792,6 +896,7 @@
     }
 
     // ─── Boot ─────────────────────────────────────────────────────────────────
+    initPairing();
     connectWS();
   </script>
 </body>
