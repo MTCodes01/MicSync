@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
     rel="stylesheet" />
+  <script src="qrcode.min.js"></script>
   <style>
     *,
     *::before,
@@ -150,6 +151,65 @@
 
     #status-text {
       transition: color 0.3s;
+    }
+
+    /* ── Pair card ── */
+    .pair-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px dashed var(--border-hover);
+      border-radius: var(--radius);
+      padding: 16px 22px;
+      margin-bottom: 34px;
+      transition: all 0.3s;
+    }
+
+    .pair-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .copy-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.2s;
+    }
+
+    .copy-btn:hover {
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    #qrcode {
+      padding: 8px;
+      background: #fff;
+      border-radius: 12px;
+      display: inline-block;
+    }
+
+    #qrcode img,
+    #qrcode canvas {
+      display: block;
+    }
+
+    .pair-hint {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .pair-card.connected #qrcode,
+    .pair-card.connected .pair-hint {
+      display: none;
     }
 
     /* ── Mode cards ── */
@@ -457,6 +517,16 @@
       <span id="status-text">Disconnected</span>
     </div>
 
+    <!-- Room & QR Pairing -->
+    <div class="pair-card" id="pair-card">
+      <div class="pair-header">
+        <span>Room: <strong id="room-id-display">…</strong></span>
+        <button class="copy-btn" id="copy-btn" onclick="copyLink()">📋 Copy Link</button>
+      </div>
+      <div id="qrcode"></div>
+      <span class="pair-hint">Scan with your phone to join this room</span>
+    </div>
+
     <!-- Mode selection cards -->
     <div class="mode-grid" id="mode-grid">
       <div class="mode-card" id="card-mic" onclick="selectMode('mic')">
@@ -515,10 +585,80 @@
     let analyser = null;
     let vizRaf = null;
 
+    // ─── Room & Pairing Setup ────────────────────────────────────────────────
+    const urlParams = new URLSearchParams(window.location.search);
+    let roomId = (urlParams.get('room') || Math.random().toString(36).substring(2, 6)).toUpperCase();
+    if (urlParams.get('room') !== roomId) {
+      urlParams.set('room', roomId);
+      history.replaceState({}, '', `${location.pathname}?${urlParams}`);
+    }
+
+    let pairUrl = location.href;
+    function initPairing() {
+      document.getElementById('room-id-display').textContent = roomId;
+      // Render immediately with current URL so the container is not left blank
+      renderQR(pairUrl);
+
+      fetch('/api/info').then(r => r.json()).then(info => {
+        const proto = info.protocol || (location.protocol === 'https:' ? 'https' : 'http');
+        if (info.localIp && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+          pairUrl = `${proto}://${info.localIp}:${info.port}/?room=${roomId}`;
+          renderQR(pairUrl);
+        }
+      }).catch(() => {});
+
+      if (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        const httpsLink = `https://${location.host}${location.search}`;
+        setMessage('⚠️ Mobile requires HTTPS for microphone. Tap here to switch to HTTPS', true);
+        const msgEl = document.getElementById('message');
+        msgEl.style.cursor = 'pointer';
+        msgEl.onclick = () => { location.href = httpsLink; };
+      }
+    }
+
+    function renderQR(url) {
+      const el = document.getElementById('qrcode');
+      if (!el) return;
+      el.innerHTML = '';
+
+      if (window.QRCode) {
+        try {
+          new QRCode(el, {
+            text: url,
+            width: 120,
+            height: 120,
+            correctLevel: QRCode.CorrectLevel ? QRCode.CorrectLevel.M : 0
+          });
+          return;
+        } catch (err) {
+          console.warn('QRCode generation failed, using fallback image:', err);
+          el.innerHTML = '';
+        }
+      }
+
+      const img = document.createElement('img');
+      img.width = 120;
+      img.height = 120;
+      img.alt = 'QR Code';
+      img.src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(url)}`;
+      img.onerror = () => {
+        el.innerHTML = `
+          <div style="font-size:11px;color:#f87171;padding:8px 4px;text-align:center;line-height:1.4">
+            ⚠️ QR Unavailable<br>
+            <button class="copy-btn" onclick="copyLink()" style="margin-top:4px;font-size:11px">📋 Copy Link</button>
+          </div>`;
+      };
+      el.appendChild(img);
+    }
+
+    function copyLink() {
+      navigator.clipboard.writeText(pairUrl).then(() => setMessage('Room link copied! 📋'));
+    }
+
     // ─── WebSocket connection ─────────────────────────────────────────────────
     // Use wss:// when served over HTTPS (e.g. dev tunnels, ngrok) to avoid mixed-content blocks
     const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProto}//${location.host}`;
+    const wsUrl = `${wsProto}//${location.host}?room=${roomId}`;
 
     function connectWS() {
       setStatus('connecting');
@@ -538,6 +678,7 @@
 
         if (msg.type === 'peer-count') {
           peerConnected = msg.count === 2;
+          document.getElementById('pair-card').classList.toggle('connected', peerConnected);
           if (peerConnected) {
             setStatus('connected');
             setMessage('Peer connected! Select a mode above.');
@@ -593,7 +734,11 @@
       document.getElementById('mode-label').textContent = m === 'mic' ? 'SENDER MODE' : 'RECEIVER MODE';
 
       if (m === 'mic' && peerConnected && !streaming) autoStartOffer();
-      if (m === 'spk') setMessage('Waiting for microphone device to start streaming…');
+      if (m === 'spk') {
+        const audio = document.getElementById('remote-audio');
+        audio.play().catch(() => {});
+        setMessage('Waiting for microphone device to start streaming…');
+      }
 
       updateStreamBtn();
     }
@@ -638,10 +783,13 @@
       if (streaming) return;
 
       try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Microphone access requires HTTPS on mobile devices. Please reload via https://');
+        }
         setMessage('Requesting microphone access…');
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       } catch (e) {
-        setMessage('⚠️ Microphone access denied: ' + e.message, true);
+        setMessage('⚠️ ' + e.message, true);
         return;
       }
 
@@ -686,6 +834,7 @@
         const audio = document.getElementById('remote-audio');
         if (audio.srcObject !== e.streams[0]) {
           audio.srcObject = e.streams[0];
+          audio.play().catch(() => {});
           startRemoteVisualizer(e.streams[0]);
         }
       };
@@ -792,6 +941,7 @@
     }
 
     // ─── Boot ─────────────────────────────────────────────────────────────────
+    initPairing();
     connectWS();
   </script>
 </body>
