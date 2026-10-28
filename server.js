@@ -1,4 +1,5 @@
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const { networkInterfaces } = require('os');
@@ -8,22 +9,71 @@ const PORT = 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 function getLocalIp() {
-  for (const iface of Object.values(networkInterfaces())) {
-    for (const net of iface) {
-      if (net.family === 'IPv4' && !net.internal) return net.address;
+  const ifaces = networkInterfaces();
+  const candidates = [];
+
+  const isVirtual = (name) => {
+    const lower = name.toLowerCase();
+    return lower.includes('tailscale') ||
+      lower.includes('virtual') ||
+      lower.includes('vmware') ||
+      lower.includes('vethernet') ||
+      lower.includes('wsl') ||
+      lower.includes('docker') ||
+      lower.includes('tap') ||
+      lower.includes('tun') ||
+      lower.includes('vpn') ||
+      lower.includes('pseudo') ||
+      lower.includes('loopback');
+  };
+
+  for (const [name, list] of Object.entries(ifaces)) {
+    if (!list) continue;
+    for (const net of list) {
+      if (net.family !== 'IPv4' || net.internal) continue;
+      const parts = net.address.split('.').map(Number);
+      const isCgnat = parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127;
+
+      let score = 0;
+      const lowerName = name.toLowerCase();
+
+      if (isVirtual(name) || isCgnat) {
+        score -= 50;
+      }
+      if (lowerName.includes('wi-fi') || lowerName.includes('wifi') || lowerName.includes('wireless') || lowerName.includes('wlan')) {
+        score += 40;
+      } else if (lowerName.includes('ethernet') || lowerName.includes('eth') || lowerName.includes('en')) {
+        score += 30;
+      }
+
+      if (net.address.startsWith('192.168.')) {
+        score += 25;
+      } else if (net.address.startsWith('10.') && !isCgnat) {
+        score += 15;
+      } else if (net.address.startsWith('172.') && parts[1] >= 16 && parts[1] <= 31) {
+        score += 10;
+      }
+
+      candidates.push({ name, address: net.address, score });
     }
   }
-  return 'localhost';
+
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates.length > 0 ? candidates[0].address : 'localhost';
 }
 const localIp = getLocalIp();
 
-// --- HTTP Server (serves static files & pairing info) ---
-const server = http.createServer((req, res) => {
+const certFile = path.join(__dirname, 'cert.pem');
+const keyFile = path.join(__dirname, 'key.pem');
+const hasSSL = fs.existsSync(certFile) && fs.existsSync(keyFile);
+
+// --- HTTP / HTTPS Server (serves static files & pairing info) ---
+const requestHandler = (req, res) => {
   const cleanUrl = req.url.split('?')[0];
 
   if (cleanUrl === '/api/info') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ localIp, port: PORT }));
+    return res.end(JSON.stringify({ localIp, port: PORT, protocol: hasSSL ? 'https' : 'http' }));
   }
 
   const filePath = path.join(PUBLIC_DIR, cleanUrl === '/' ? 'index.html' : cleanUrl);
@@ -43,7 +93,11 @@ const server = http.createServer((req, res) => {
       res.end(data);
     }
   });
-});
+};
+
+const server = hasSSL
+  ? https.createServer({ key: fs.readFileSync(keyFile), cert: fs.readFileSync(certFile) }, requestHandler)
+  : http.createServer(requestHandler);
 
 // --- WebSocket Signaling Server with Multi-Room Support ---
 const wss = new WebSocketServer({ server });
@@ -98,8 +152,9 @@ wss.on('connection', (ws, req) => {
   });
 });
 
+const proto = hasSSL ? 'https' : 'http';
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n🚀 Server running!`);
-  console.log(`   Local:   http://localhost:${PORT}`);
-  console.log(`   Network: http://${localIp}:${PORT}  ← open this on your phone\n`);
+  console.log(`\n🚀 Server running (${proto.toUpperCase()})!`);
+  console.log(`   Local:   ${proto}://localhost:${PORT}`);
+  console.log(`   Network: ${proto}://${localIp}:${PORT}  ← open this on your phone\n`);
 });

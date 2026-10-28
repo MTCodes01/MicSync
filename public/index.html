@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
     rel="stylesheet" />
-  <script src="/qrcode.min.js"></script>
+  <script src="qrcode.min.js"></script>
   <style>
     *,
     *::before,
@@ -596,22 +596,59 @@
     let pairUrl = location.href;
     function initPairing() {
       document.getElementById('room-id-display').textContent = roomId;
+      // Render immediately with current URL so the container is not left blank
+      renderQR(pairUrl);
+
       fetch('/api/info').then(r => r.json()).then(info => {
+        const proto = info.protocol || (location.protocol === 'https:' ? 'https' : 'http');
         if (info.localIp && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-          pairUrl = `${location.protocol}//${info.localIp}:${info.port}/?room=${roomId}`;
+          pairUrl = `${proto}://${info.localIp}:${info.port}/?room=${roomId}`;
+          renderQR(pairUrl);
         }
-        renderQR(pairUrl);
-      }).catch(() => renderQR(pairUrl));
+      }).catch(() => {});
+
+      if (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        const httpsLink = `https://${location.host}${location.search}`;
+        setMessage('⚠️ Mobile requires HTTPS for microphone. Tap here to switch to HTTPS', true);
+        const msgEl = document.getElementById('message');
+        msgEl.style.cursor = 'pointer';
+        msgEl.onclick = () => { location.href = httpsLink; };
+      }
     }
 
     function renderQR(url) {
       const el = document.getElementById('qrcode');
+      if (!el) return;
       el.innerHTML = '';
+
       if (window.QRCode) {
-        new QRCode(el, { text: url, width: 120, height: 120 });
-      } else {
-        el.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(url)}" width="120" height="120" alt="QR Code">`;
+        try {
+          new QRCode(el, {
+            text: url,
+            width: 120,
+            height: 120,
+            correctLevel: QRCode.CorrectLevel ? QRCode.CorrectLevel.M : 0
+          });
+          return;
+        } catch (err) {
+          console.warn('QRCode generation failed, using fallback image:', err);
+          el.innerHTML = '';
+        }
       }
+
+      const img = document.createElement('img');
+      img.width = 120;
+      img.height = 120;
+      img.alt = 'QR Code';
+      img.src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(url)}`;
+      img.onerror = () => {
+        el.innerHTML = `
+          <div style="font-size:11px;color:#f87171;padding:8px 4px;text-align:center;line-height:1.4">
+            ⚠️ QR Unavailable<br>
+            <button class="copy-btn" onclick="copyLink()" style="margin-top:4px;font-size:11px">📋 Copy Link</button>
+          </div>`;
+      };
+      el.appendChild(img);
     }
 
     function copyLink() {
@@ -697,7 +734,11 @@
       document.getElementById('mode-label').textContent = m === 'mic' ? 'SENDER MODE' : 'RECEIVER MODE';
 
       if (m === 'mic' && peerConnected && !streaming) autoStartOffer();
-      if (m === 'spk') setMessage('Waiting for microphone device to start streaming…');
+      if (m === 'spk') {
+        const audio = document.getElementById('remote-audio');
+        audio.play().catch(() => {});
+        setMessage('Waiting for microphone device to start streaming…');
+      }
 
       updateStreamBtn();
     }
@@ -742,10 +783,13 @@
       if (streaming) return;
 
       try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Microphone access requires HTTPS on mobile devices. Please reload via https://');
+        }
         setMessage('Requesting microphone access…');
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       } catch (e) {
-        setMessage('⚠️ Microphone access denied: ' + e.message, true);
+        setMessage('⚠️ ' + e.message, true);
         return;
       }
 
@@ -790,6 +834,7 @@
         const audio = document.getElementById('remote-audio');
         if (audio.srcObject !== e.streams[0]) {
           audio.srcObject = e.streams[0];
+          audio.play().catch(() => {});
           startRemoteVisualizer(e.streams[0]);
         }
       };
