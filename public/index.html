@@ -38,6 +38,21 @@
       --radius: 20px;
     }
 
+    body.light {
+      --bg: #f8fafc;
+      --bg2: #ffffff;
+      --surface: rgba(0, 0, 0, 0.04);
+      --surface-hover: rgba(0, 0, 0, 0.07);
+      --border: rgba(0, 0, 0, 0.1);
+      --border-hover: rgba(0, 0, 0, 0.2);
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent-mic: #4f46e5;
+      --accent-spk: #0d9488;
+    }
+    body.light canvas#visualizer { background: rgba(0, 0, 0, 0.05); }
+    .theme-btn { position: absolute; top: 16px; right: 16px; background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 999px; padding: 6px 14px; cursor: pointer; font: inherit; font-size: 13px; z-index: 10; transition: 0.2s; }
+
     html,
     body {
       height: 100%;
@@ -45,6 +60,7 @@
       background: var(--bg);
       color: var(--text);
       overflow-x: hidden;
+      transition: background 0.3s, color 0.3s;
     }
 
     /* ── Animated background ── */
@@ -175,7 +191,7 @@
     }
 
     .copy-btn {
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--surface-hover);
       border: 1px solid var(--border);
       color: var(--text);
       border-radius: 8px;
@@ -187,7 +203,7 @@
     }
 
     .copy-btn:hover {
-      background: rgba(255, 255, 255, 0.16);
+      border-color: var(--border-hover);
     }
 
     #qrcode {
@@ -505,6 +521,7 @@
 
 <body>
   <div class="app">
+    <button id="theme-btn" class="theme-btn" onclick="toggleTheme()" title="Toggle Dark/Light Mode">🌙 Dark</button>
     <header>
       <div class="logo">🎙 MicStream</div>
       <h1>Real-Time Audio Bridge</h1>
@@ -879,12 +896,14 @@
       const ctx = canvas.getContext('2d');
       const W = canvas.width, H = canvas.height;
       const dataArr = new Uint8Array(analyser.frequencyBinCount);
-      const accent = mode === 'mic' ? '#6c63ff' : '#0fa37f';
 
       function draw() {
         vizRaf = requestAnimationFrame(draw);
         analyser.getByteFrequencyData(dataArr);
         ctx.clearRect(0, 0, W, H);
+
+        const isLight = document.body.classList.contains('light');
+        const accent = mode === 'mic' ? (isLight ? '#4f46e5' : '#6c63ff') : (isLight ? '#0d9488' : '#0fa37f');
 
         const barW = (W / dataArr.length) * 2.2;
         let x = 0;
@@ -939,6 +958,15 @@
         if (mode === 'spk') btn.disabled = true; // speaker is passive
       }
     }
+
+    // ─── Theme Toggle ─────────────────────────────────────────────────────────
+    function toggleTheme(set) {
+      const isLight = typeof set === 'boolean' ? set : !document.body.classList.contains('light');
+      document.body.classList.toggle('light', isLight);
+      localStorage.setItem('theme', isLight ? 'light' : 'dark');
+      document.getElementById('theme-btn').textContent = isLight ? '☀️ Light' : '🌙 Dark';
+    }
+    if (localStorage.getItem('theme') === 'light' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: light)').matches)) toggleTheme(true);
 
     // ─── Boot ─────────────────────────────────────────────────────────────────
     initPairing();
