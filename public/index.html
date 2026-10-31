@@ -51,7 +51,9 @@
       --accent-spk: #0d9488;
     }
     body.light canvas#visualizer { background: rgba(0, 0, 0, 0.05); }
-    .theme-btn { position: absolute; top: 16px; right: 16px; background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 999px; padding: 6px 14px; cursor: pointer; font: inherit; font-size: 13px; z-index: 10; transition: 0.2s; }
+    .top-actions { position: absolute; top: 16px; right: 16px; display: flex; align-items: center; gap: 8px; z-index: 10; }
+    .guide-btn, .theme-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 999px; padding: 6px 14px; cursor: pointer; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+    .guide-btn:hover, .theme-btn:hover { background: var(--surface-hover); border-color: var(--border-hover); transform: translateY(-1px); }
 
     html,
     body {
@@ -507,7 +509,509 @@
       }
     }
 
+    /* ── Neo the Lizard Mascot & Guide ── */
+    .neo-widget {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
+    .neo-avatar-container {
+      position: relative;
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      cursor: pointer;
+      padding: 3px;
+      background: linear-gradient(135deg, #05d9a4, #6c63ff);
+      box-shadow: 0 6px 24px rgba(5, 217, 164, 0.35);
+      animation: neo-bob 3.5s ease-in-out infinite;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s;
+      user-select: none;
+    }
+
+    .neo-avatar-container:hover {
+      transform: scale(1.1) rotate(-3deg);
+      box-shadow: 0 10px 30px rgba(5, 217, 164, 0.5);
+    }
+
+    .neo-avatar-container:active {
+      transform: scale(0.95);
+    }
+
+    .neo-avatar-img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+      display: block;
+      background: #0f1120;
+    }
+
+    .neo-badge {
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      background: #05d9a4;
+      color: #013024;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      border-radius: 999px;
+      padding: 2px 7px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      border: 1.5px solid var(--bg);
+    }
+
+    @keyframes neo-bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    .neo-bubble {
+      position: relative;
+      background: var(--bg2);
+      border: 1px solid var(--border-hover);
+      border-radius: 16px;
+      padding: 12px 14px;
+      max-width: 290px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+      animation: neo-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .neo-bubble.hidden {
+      display: none !important;
+    }
+
+    .neo-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -7px;
+      right: 28px;
+      width: 12px;
+      height: 12px;
+      background: var(--bg2);
+      border-right: 1px solid var(--border-hover);
+      border-bottom: 1px solid var(--border-hover);
+      transform: rotate(45deg);
+    }
+
+    .neo-bubble-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .neo-bubble-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: #05d9a4;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .neo-bubble-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+
+    .neo-bubble-close:hover {
+      color: var(--text);
+    }
+
+    .neo-bubble-text {
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--text);
+    }
+
+    .neo-bubble-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding-top: 6px;
+      border-top: 1px solid var(--border);
+    }
+
+    .neo-bubble-action-btn {
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 8px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .neo-bubble-action-btn:hover {
+      background: rgba(5, 217, 164, 0.15);
+      border-color: #05d9a4;
+      color: #05d9a4;
+    }
+
+    .neo-bubble-action-btn.primary {
+      background: linear-gradient(135deg, #05d9a4, #0fa37f);
+      color: #003a2e;
+      border: none;
+    }
+
+    .neo-bubble-action-btn.primary:hover {
+      filter: brightness(1.1);
+      color: #00221b;
+    }
+
+    @keyframes neo-pop {
+      from { opacity: 0; transform: translateY(10px) scale(0.92); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* Modal Backdrop & Container */
+    .neo-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 10, 18, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .neo-modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .neo-modal {
+      background: var(--bg2);
+      border: 1px solid var(--border-hover);
+      border-radius: 22px;
+      width: 100%;
+      max-width: 540px;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      overflow: hidden;
+      transform: translateY(16px) scale(0.96);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .neo-modal-backdrop.open .neo-modal {
+      transform: translateY(0) scale(1);
+    }
+
+    .neo-modal-header {
+      padding: 20px 24px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .neo-modal-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .neo-modal-mascot-img {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #05d9a4;
+      box-shadow: 0 4px 12px rgba(5, 217, 164, 0.3);
+      flex-shrink: 0;
+    }
+
+    .neo-modal-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .neo-modal-subtitle {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .neo-modal-close {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: all 0.2s;
+    }
+
+    .neo-modal-close:hover {
+      background: var(--surface-hover);
+      color: var(--text);
+      transform: scale(1.05);
+    }
+
+    .neo-modal-tabs {
+      display: flex;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .neo-modal-tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .neo-tab-btn {
+      flex: 1;
+      min-width: 100px;
+      padding: 12px 8px;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .neo-tab-btn:hover {
+      color: var(--text);
+      background: var(--surface-hover);
+    }
+
+    .neo-tab-btn.active {
+      color: #05d9a4;
+      border-bottom-color: #05d9a4;
+      background: rgba(5, 217, 164, 0.06);
+    }
+
+    .neo-modal-body {
+      padding: 22px 24px;
+      min-height: 220px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .neo-step-panel {
+      display: none;
+      animation: neo-fade 0.25s ease;
+    }
+
+    .neo-step-panel.active {
+      display: block;
+    }
+
+    @keyframes neo-fade {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .neo-step-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(5, 217, 164, 0.12);
+      color: #05d9a4;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 3px 9px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+
+    .neo-step-heading {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .neo-step-desc {
+      font-size: 13.5px;
+      line-height: 1.55;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .neo-step-points {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .neo-step-points li {
+      font-size: 13px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      line-height: 1.45;
+      color: var(--text);
+    }
+
+    .neo-step-points li span.icon {
+      flex-shrink: 0;
+      font-size: 14px;
+    }
+
+    .neo-modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+    }
+
+    .neo-dots {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .neo-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--border-hover);
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+
+    .neo-dot.active {
+      width: 20px;
+      border-radius: 999px;
+      background: #05d9a4;
+    }
+
+    .neo-nav-btn {
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .neo-nav-btn.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .neo-nav-btn.secondary:hover:not(:disabled) {
+      border-color: var(--border-hover);
+      color: var(--text);
+    }
+
+    .neo-nav-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .neo-nav-btn.primary {
+      background: linear-gradient(135deg, #05d9a4, #0fa37f);
+      border: none;
+      color: #003a2e;
+      box-shadow: 0 4px 14px rgba(5, 217, 164, 0.3);
+    }
+
+    .neo-nav-btn.primary:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+
+    /* Light Theme Adjustments */
+    body.light .neo-step-tag { background: rgba(13, 148, 136, 0.12); color: #0d9488; }
+    body.light .neo-bubble-name { color: #0d9488; }
+    body.light .neo-tab-btn.active { color: #0d9488; border-bottom-color: #0d9488; background: rgba(13, 148, 136, 0.08); }
+    body.light .neo-nav-btn.primary { background: linear-gradient(135deg, #0d9488, #14b8a6); color: #ffffff; }
+    body.light .neo-dot.active { background: #0d9488; }
+    body.light .neo-avatar-container { background: linear-gradient(135deg, #0d9488, #4f46e5); box-shadow: 0 6px 20px rgba(13, 148, 136, 0.25); }
+    body.light .neo-badge { background: #0d9488; color: #ffffff; }
+    body.light .neo-bubble-action-btn.primary { background: linear-gradient(135deg, #0d9488, #14b8a6); color: #ffffff; }
+
     @media (max-width: 500px) {
+      .top-actions {
+        top: 12px;
+        right: 12px;
+        gap: 6px;
+      }
+      .guide-btn, .theme-btn {
+        padding: 5px 10px;
+        font-size: 12px;
+      }
+      .neo-widget {
+        bottom: 16px;
+        right: 16px;
+      }
+      .neo-avatar-container {
+        width: 56px;
+        height: 56px;
+      }
+      .neo-bubble {
+        max-width: calc(100vw - 32px);
+      }
+      .neo-modal-tabs {
+        font-size: 11px;
+      }
+      .neo-tab-btn {
+        padding: 10px 6px;
+        font-size: 11px;
+        min-width: 80px;
+      }
+      .neo-modal-body {
+        padding: 16px 18px;
+        min-height: 190px;
+      }
+      .neo-modal-footer {
+        padding: 12px 18px;
+      }
       .mode-grid {
         grid-template-columns: 1fr;
       }
@@ -521,7 +1025,10 @@
 
 <body>
   <div class="app">
-    <button id="theme-btn" class="theme-btn" onclick="toggleTheme()" title="Toggle Dark/Light Mode">🌙 Dark</button>
+    <div class="top-actions">
+      <button id="guide-btn" class="guide-btn" onclick="openGuideModal()" title="How to use MicSync (Neo's Guide)">🦎 Neo's Guide</button>
+      <button id="theme-btn" class="theme-btn" onclick="toggleTheme()" title="Toggle Dark/Light Mode">🌙 Dark</button>
+    </div>
     <header>
       <div class="logo">🎙 MicStream</div>
       <h1>Real-Time Audio Bridge</h1>
@@ -588,6 +1095,109 @@
     <audio id="remote-audio" autoplay playsinline></audio>
 
     <footer>MicStream · WebRTC · Works in-browser, no app needed</footer>
+  </div>
+
+  <!-- Neo the Lizard Floating Mascot Widget -->
+  <div class="neo-widget" id="neo-widget">
+    <div class="neo-bubble" id="neo-bubble">
+      <div class="neo-bubble-header">
+        <span class="neo-bubble-name">🦎 Neo the Guide</span>
+        <button class="neo-bubble-close" onclick="dismissNeoBubble(event)" title="Dismiss tip">×</button>
+      </div>
+      <div class="neo-bubble-text" id="neo-bubble-text">Hi! I'm Neo 👋 Click me for tips or open the guide below!</div>
+      <div class="neo-bubble-actions">
+        <button class="neo-bubble-action-btn" onclick="cycleNeoTip(event)">Next Tip 💡</button>
+        <button class="neo-bubble-action-btn primary" onclick="openGuideModal()">How to use ↗</button>
+      </div>
+    </div>
+    <div class="neo-avatar-container" id="neo-avatar" onclick="handleNeoClick()" title="Chat with Neo / Open Guide">
+      <img src="lizard.jpg" alt="Neo the Lizard Guide" class="neo-avatar-img" />
+      <span class="neo-badge">Guide</span>
+    </div>
+  </div>
+
+  <!-- Neo's Onboarding & Helper Modal -->
+  <div class="neo-modal-backdrop" id="neo-modal-backdrop" onclick="handleBackdropClick(event)">
+    <div class="neo-modal" role="dialog" aria-modal="true" aria-labelledby="neo-modal-title">
+      <div class="neo-modal-header">
+        <div class="neo-modal-brand">
+          <img src="lizard.jpg" alt="Neo" class="neo-modal-mascot-img" />
+          <div>
+            <div class="neo-modal-title" id="neo-modal-title">How to use MicSync</div>
+            <div class="neo-modal-subtitle">Step-by-step guide with Neo the Lizard 🦎</div>
+          </div>
+        </div>
+        <button class="neo-modal-close" onclick="closeGuideModal()" title="Close guide">✕</button>
+      </div>
+
+      <div class="neo-modal-tabs" id="neo-tabs">
+        <button class="neo-tab-btn active" onclick="switchGuideTab(0)"><span>🔊</span> Step 1: Speaker</button>
+        <button class="neo-tab-btn" onclick="switchGuideTab(1)"><span>📱</span> Step 2: Scan QR</button>
+        <button class="neo-tab-btn" onclick="switchGuideTab(2)"><span>🎙️</span> Step 3: Stream</button>
+        <button class="neo-tab-btn" onclick="switchGuideTab(3)"><span>🛠️</span> Tips & Fixes</button>
+      </div>
+
+      <div class="neo-modal-body">
+        <!-- Step 1 -->
+        <div class="neo-step-panel active" id="neo-step-0">
+          <span class="neo-step-tag">Step 1 · Receiver Device</span>
+          <h3 class="neo-step-heading">Start Speaker Mode on Desktop</h3>
+          <p class="neo-step-desc">Designate your laptop, desktop, or tablet as the audio speaker to receive real-time sound.</p>
+          <ul class="neo-step-points">
+            <li><span class="icon">💻</span> <span>Click <b>"Use as Speaker"</b> on this computer screen.</span></li>
+            <li><span class="icon">⏳</span> <span>The status will say <i>"Waiting for peer…"</i> until your phone connects.</span></li>
+            <li><span class="icon">🎧</span> <span><b>Pro-Tip:</b> Use headphones or external speakers to prevent acoustic feedback whistling!</span></li>
+          </ul>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="neo-step-panel" id="neo-step-1">
+          <span class="neo-step-tag">Step 2 · Quick Pairing</span>
+          <h3 class="neo-step-heading">Scan QR Code with Mobile Phone</h3>
+          <p class="neo-step-desc">Connect both devices to the same room seamlessly without typing any long addresses.</p>
+          <ul class="neo-step-points">
+            <li><span class="icon">📶</span> <span>Make sure your phone is connected to the <b>same Wi-Fi</b> network.</span></li>
+            <li><span class="icon">📷</span> <span>Open your phone's camera and point it at the QR code on the desktop screen.</span></li>
+            <li><span class="icon">📋</span> <span>Alternatively, tap <b>"Copy Link"</b> to share the room URL via chat or email.</span></li>
+          </ul>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="neo-step-panel" id="neo-step-2">
+          <span class="neo-step-tag">Step 3 · Transmitter Mode</span>
+          <h3 class="neo-step-heading">Allow Microphone & Start Streaming</h3>
+          <p class="neo-step-desc">Use your smartphone as a high-fidelity wireless microphone.</p>
+          <ul class="neo-step-points">
+            <li><span class="icon">🎙️</span> <span>On your phone, tap <b>"Use as Microphone"</b>.</span></li>
+            <li><span class="icon">🛡️</span> <span>When your browser prompts you, tap <b>"Allow"</b> for microphone permissions.</span></li>
+            <li><span class="icon">🚀</span> <span>Tap <b>"Start Streaming"</b>. Audio will stream directly to your desktop speaker!</span></li>
+          </ul>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="neo-step-panel" id="neo-step-3">
+          <span class="neo-step-tag">Bonus · Troubleshooting & Tips</span>
+          <h3 class="neo-step-heading">Visualizer & Helpful Hints</h3>
+          <p class="neo-step-desc">Everything you need to ensure crystal clear sound and troubleshoot issues.</p>
+          <ul class="neo-step-points">
+            <li><span class="icon">📊</span> <span><b>Audio Visualizer:</b> Check the green/purple audio waveform bar to confirm sound is active.</span></li>
+            <li><span class="icon">🔒</span> <span><b>Microphone Blocked?</b> Tap the lock icon in your browser address bar to allow mic access.</span></li>
+            <li><span class="icon">⚡</span> <span><b>Low Latency:</b> Direct peer-to-peer WebRTC connection ensures near-zero delay!</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="neo-modal-footer">
+        <button class="neo-nav-btn secondary" id="neo-prev-btn" onclick="prevGuideStep()" disabled>Previous</button>
+        <div class="neo-dots" id="neo-dots">
+          <span class="neo-dot active" onclick="switchGuideTab(0)"></span>
+          <span class="neo-dot" onclick="switchGuideTab(1)"></span>
+          <span class="neo-dot" onclick="switchGuideTab(2)"></span>
+          <span class="neo-dot" onclick="switchGuideTab(3)"></span>
+        </div>
+        <button class="neo-nav-btn primary" id="neo-next-btn" onclick="nextGuideStep()">Next Step →</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -707,6 +1317,7 @@
             setMessage('Waiting for second device to connect…');
             updateStreamBtn();
           }
+          if (typeof updateNeoTip === 'function') updateNeoTip(false);
           return;
         }
 
@@ -758,6 +1369,7 @@
       }
 
       updateStreamBtn();
+      if (typeof updateNeoTip === 'function') updateNeoTip(false);
     }
 
     // ─── Stream toggle ────────────────────────────────────────────────────────
@@ -786,6 +1398,7 @@
       stopVisualizer();
       updateStreamBtn();
       setMessage('Stream stopped.');
+      if (typeof updateNeoTip === 'function') updateNeoTip(false);
       // Re-invite if peer still connected
       if (peerConnected && mode === 'mic') {
         setTimeout(() => {
@@ -821,6 +1434,7 @@
       updateStreamBtn();
       startVisualizer(localStream);
       setMessage('Streaming audio… 🎙');
+      if (typeof updateNeoTip === 'function') updateNeoTip(false);
     }
 
     // ─── WebRTC: Speaker side (answer) ───────────────────────────────────────
@@ -834,6 +1448,7 @@
       streaming = true;
       updateStreamBtn();
       setMessage('Receiving audio… 🔊');
+      if (typeof updateNeoTip === 'function') updateNeoTip(false);
     }
 
     // ─── RTCPeerConnection factory ────────────────────────────────────────────
@@ -968,8 +1583,148 @@
     }
     if (localStorage.getItem('theme') === 'light' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: light)').matches)) toggleTheme(true);
 
+    // ─── Neo the Lizard Guide Logic ───────────────────────────────────────────
+    let currentGuideStep = 0;
+    const totalGuideSteps = 4;
+    let neoTipIndex = 0;
+    const neoTips = [
+      "💡 Quick start: Choose <b>Speaker</b> on desktop, then scan the QR code on mobile!",
+      "🎙️ Mobile mic: Tap <b>'Allow'</b> when your phone browser asks for microphone access.",
+      "📶 Same Wi-Fi: Both devices must be on the same local network to connect peer-to-peer.",
+      "🎧 Echo tip: Wear headphones on the speaker device to prevent feedback whistling!",
+      "📊 Visualizer: Watch the wave bar bounce to confirm your voice is being detected live.",
+      "✨ WebRTC: MicSync streams ultra-low latency audio directly between your devices!"
+    ];
+
+    function getNeoContextualTip() {
+      if (streaming) return "✨ Audio is streaming live! WebRTC transmits directly with low latency.";
+      if (mode === 'mic') return "🎙️ Mic mode chosen! Tap 'Start Streaming' and speak into your phone.";
+      if (mode === 'spk') return "🔊 Speaker mode active! Now scan the QR code on your phone to send audio here.";
+      if (peerConnected) return "🎉 Both devices connected! Pick Microphone on one and Speaker on the other.";
+      return neoTips[neoTipIndex % neoTips.length];
+    }
+
+    function updateNeoTip(animate = true) {
+      const bubbleText = document.getElementById('neo-bubble-text');
+      if (bubbleText) {
+        bubbleText.innerHTML = getNeoContextualTip();
+      }
+      if (animate) {
+        const avatar = document.getElementById('neo-avatar');
+        if (avatar) {
+          avatar.style.transform = 'scale(1.15) rotate(-6deg)';
+          setTimeout(() => { avatar.style.transform = ''; }, 300);
+        }
+      }
+    }
+
+    function cycleNeoTip(e) {
+      if (e) e.stopPropagation();
+      neoTipIndex++;
+      updateNeoTip(true);
+    }
+
+    function handleNeoClick() {
+      const bubble = document.getElementById('neo-bubble');
+      if (bubble.classList.contains('hidden')) {
+        bubble.classList.remove('hidden');
+        updateNeoTip(true);
+      } else {
+        cycleNeoTip();
+      }
+    }
+
+    function dismissNeoBubble(e) {
+      if (e) e.stopPropagation();
+      const bubble = document.getElementById('neo-bubble');
+      if (bubble) bubble.classList.add('hidden');
+      localStorage.setItem('hasSeenGuide', 'true');
+    }
+
+    function openGuideModal() {
+      const backdrop = document.getElementById('neo-modal-backdrop');
+      if (backdrop) backdrop.classList.add('open');
+      dismissNeoBubble();
+    }
+
+    function closeGuideModal() {
+      const backdrop = document.getElementById('neo-modal-backdrop');
+      if (backdrop) backdrop.classList.remove('open');
+      localStorage.setItem('hasSeenGuide', 'true');
+    }
+
+    function handleBackdropClick(e) {
+      if (e.target && e.target.id === 'neo-modal-backdrop') {
+        closeGuideModal();
+      }
+    }
+
+    function switchGuideTab(index) {
+      currentGuideStep = index;
+      for (let i = 0; i < totalGuideSteps; i++) {
+        const panel = document.getElementById(`neo-step-${i}`);
+        if (panel) panel.classList.toggle('active', i === index);
+      }
+      const tabBtns = document.querySelectorAll('.neo-tab-btn');
+      tabBtns.forEach((btn, i) => btn.classList.toggle('active', i === index));
+
+      const dots = document.querySelectorAll('.neo-dot');
+      dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
+
+      const prevBtn = document.getElementById('neo-prev-btn');
+      if (prevBtn) prevBtn.disabled = index === 0;
+
+      const nextBtn = document.getElementById('neo-next-btn');
+      if (nextBtn) {
+        if (index === totalGuideSteps - 1) {
+          nextBtn.textContent = "Got it! Let's Stream 🚀";
+        } else {
+          nextBtn.textContent = 'Next Step →';
+        }
+      }
+    }
+
+    function nextGuideStep() {
+      if (currentGuideStep < totalGuideSteps - 1) {
+        switchGuideTab(currentGuideStep + 1);
+      } else {
+        closeGuideModal();
+      }
+    }
+
+    function prevGuideStep() {
+      if (currentGuideStep > 0) {
+        switchGuideTab(currentGuideStep - 1);
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      const backdrop = document.getElementById('neo-modal-backdrop');
+      if (backdrop && backdrop.classList.contains('open')) {
+        if (e.key === 'Escape') closeGuideModal();
+        if (e.key === 'ArrowRight') nextGuideStep();
+        if (e.key === 'ArrowLeft') prevGuideStep();
+      }
+    });
+
+    function initNeoGuide() {
+      const hasSeen = localStorage.getItem('hasSeenGuide') === 'true';
+      const bubble = document.getElementById('neo-bubble');
+      if (!hasSeen) {
+        setTimeout(() => {
+          if (bubble) {
+            bubble.classList.remove('hidden');
+            updateNeoTip(false);
+          }
+        }, 600);
+      } else {
+        if (bubble) bubble.classList.add('hidden');
+      }
+    }
+
     // ─── Boot ─────────────────────────────────────────────────────────────────
     initPairing();
+    initNeoGuide();
     connectWS();
   </script>
 </body>

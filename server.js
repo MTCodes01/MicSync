@@ -82,6 +82,10 @@ const requestHandler = (req, res) => {
     '.html': 'text/html',
     '.js': 'application/javascript',
     '.css': 'text/css',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.svg': 'image/svg+xml',
   };
 
   fs.readFile(filePath, (err, data) => {
